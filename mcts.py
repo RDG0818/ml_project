@@ -3,10 +3,10 @@ import random
 
 class Node:
     def __init__(self, state, parent=None, move=None):
-        self.state = state      # The game state at this node
-        self.parent = parent    # Parent node
-        self.move = move        # Move taken from the parent to this node
-        self.children = {}      # Dictionary of move -> Node
+        self.state = state    
+        self.parent = parent  
+        self.move = move      
+        self.children = {}    
         self.visit_count = 0
         self.total_value = 0.0
 
@@ -14,7 +14,6 @@ class Node:
         return game.is_terminal(self.state)
 
     def is_fully_expanded(self, game):
-        # If node is terminal, it cannot be expanded further.
         if self.is_terminal(game):
             return True
         legal_moves = game.get_legal_moves(self.state)
@@ -110,7 +109,7 @@ class MCTS:
 
         while not self.game.is_terminal(current_state):
             legal_moves = self.game.get_legal_moves(current_state)
-            if not legal_moves:  # If no legal moves, break early.
+            if not legal_moves:  
                 break
             move = random.choice(legal_moves)
             current_state = self.game.next_state(current_state, move)
@@ -130,3 +129,40 @@ class MCTS:
             node.visit_count += 1
             node.total_value += reward
             reward *= self.gamma  
+
+class SimpleGame:
+    def __init__(self, target_value=99):
+        self.target_value = target_value
+
+    def get_legal_moves(self, state):
+        if state < self.target_value:
+            return [1, 2, 3]  # Example moves: add 1, 2, or 3
+        else:
+            return []
+
+    def next_state(self, state, move):
+        return state + move
+
+    def is_terminal(self, state):
+        return state >= self.target_value
+
+    def get_reward(self, state):
+        if self.is_terminal(state):
+            return 1.0 if state == self.target_value else -5.0 
+        return -0.5 
+
+# Test case
+def test_mcts():
+    game = SimpleGame()
+    mcts = MCTS(game)
+    initial_state = 0
+    best_move, best_value = mcts.search(initial_state, num_simulations=1000)
+
+    print(f"Best move: {best_move}")
+    print(f"Best value: {best_value}")
+
+    next_state = game.next_state(initial_state, best_move)
+    print(f"Next state: {next_state}")
+    assert next_state > initial_state
+
+test_mcts()
