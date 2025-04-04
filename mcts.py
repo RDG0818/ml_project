@@ -96,7 +96,7 @@ class MCTS:
 
     def _rollout(self, state, root_player):
         current_state = state.clone()
-        discount = 1.0
+        discount = 0.98
         cumulative_reward = 0.0
 
         # In tic tac toe, intermediate rewards are zero; we only get a reward at terminal states.
