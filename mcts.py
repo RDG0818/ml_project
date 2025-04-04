@@ -54,16 +54,29 @@ def expand(node):
 
 def default_policy(state, root_player):
     """
-    Simulate a random playout until a terminal state is reached.
+    Simulate a playout until a terminal state is reached.
+    This version checks for immediate winning moves.
     Returns the outcome from the perspective of root_player.
     """
     rollout_state = state.clone()
     while not rollout_state.is_terminal():
         legal_moves = rollout_state.legal_actions()
-        move = random.choice(legal_moves)
-        rollout_state.apply_action(move)
+        move_to_play = None
+        # Check if any move results in a terminal win state for the current player.
+        for move in legal_moves:
+            test_state = rollout_state.child(move)
+            if test_state.is_terminal():
+                # Check if this terminal state is a win for the current player.
+                # Note: This assumes that a win gives a positive reward.
+                returns = test_state.returns()
+                current = rollout_state.current_player()
+                if returns[current] > 0:
+                    move_to_play = move
+                    break
+        if move_to_play is None:
+            move_to_play = random.choice(legal_moves)
+        rollout_state.apply_action(move_to_play)
     returns = rollout_state.returns()
-    # Use the root player's index to get the reward.
     return returns[root_player]
 
 def backup(node, reward):
