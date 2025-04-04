@@ -91,7 +91,7 @@ def mcts(root_state, iterations):
     best_move = max(root.children.items(), key=lambda item: item[1].visits)[0]
     return best_move
 
-def play_game(iterations_per_move=10000):
+def play_game(iterations_per_move=20000):
     """Play a complete game of tic tac toe with MCTS playing for both players."""
     game = pyspiel.load_game("tic_tac_toe")
     state = game.new_initial_state()
