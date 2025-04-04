@@ -25,7 +25,7 @@ class MCTSNode:
         best_value = -float('inf')
         best_nodes = []
         for move, child in self.children.items():
-            uct_value = (child.value / child.visits) + c_param * math.sqrt(math.log(self.visits) / child.visits)
+            uct_value = -(child.value / child.visits) + c_param * math.sqrt(math.log(self.visits) / child.visits)
             if uct_value > best_value:
                 best_value = uct_value
                 best_nodes = [child]
