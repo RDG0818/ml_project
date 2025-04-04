@@ -121,7 +121,7 @@ class MCTS:
             reward *= self.gamma
 
 def play_full_game():
-    game = pyspiel.load_game("tic_tac_toe")
+    game = pyspiel.load_game("connect_four")
     state = game.new_initial_state()
     mcts = MCTS(exploration_weight=0.5, gamma=.98)
 
@@ -130,7 +130,7 @@ def play_full_game():
         print("Current state:")
         print(state)
         # Each turn, the current player uses MCTS to choose a move.
-        best_move, best_value = mcts.search(state, num_simulations=100000)
+        best_move, best_value = mcts.search(state, num_simulations=20000)
         print(f"Player {state.current_player()} selects move: {best_move} (value: {best_value})\n")
         state.apply_action(best_move)
 
