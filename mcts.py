@@ -130,7 +130,7 @@ def play_full_game():
         print("Current state:")
         print(state)
         # Each turn, the current player uses MCTS to choose a move.
-        best_move, best_value = mcts.search(state, num_simulations=5000)
+        best_move, best_value = mcts.search(state, num_simulations=25000)
         print(f"Player {state.current_player()} selects move: {best_move} (value: {best_value})\n")
         state.apply_action(best_move)
 
