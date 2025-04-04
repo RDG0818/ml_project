@@ -213,9 +213,9 @@ class MCTS:
             # Then, as it propagates, it flips sign each time.
 
             # Let's try the simple negation approach first:
-            node.total_value += reward # Add the reward seen from the *child's* move perspective
-            reward *= -1 # Negate reward for the parent (alternating player)
-            reward *= self.gamma # Apply discount factor AFTER negation
+            node.total_value += reward 
+            reward *= -1 
+            reward *= self.gamma 
 
 def play_full_game():
     game = pyspiel.load_game("tic_tac_toe")
@@ -230,7 +230,7 @@ def play_full_game():
         print(f"Turn {turn}, Player {state.current_player()} to move:")
         print(state)
 
-        simulations = 10000 if turn < 6 else 20000 # Maybe fewer sims early game? Adjust as needed.
+        simulations = 100000
         print(f"Running {simulations} MCTS simulations...")
         best_move, best_value = mcts.search(state, num_simulations=simulations)
 
