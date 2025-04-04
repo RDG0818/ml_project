@@ -123,7 +123,7 @@ class MCTS:
 def play_full_game():
     game = pyspiel.load_game("tic_tac_toe")
     state = game.new_initial_state()
-    mcts = MCTS(exploration_weight=1.0, gamma=1.0)
+    mcts = MCTS(exploration_weight=1.0, gamma=.98)
 
     print("Starting Tic Tac Toe Game")
     while not state.is_terminal():
