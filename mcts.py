@@ -4,7 +4,7 @@ import pyspiel
 
 class Node:
     def __init__(self, state, parent=None, move=None):
-        self.state = state         # an open_spiel state object
+        self.state = state         # an OpenSpiel state object
         self.parent = parent       
         self.move = move           
         self.children = {}         
@@ -33,37 +33,39 @@ class MCTS:
         self.gamma = gamma
 
     def search(self, initial_state, num_simulations):
+        # Use the current player of the root state as the perspective for rewards.
+        root_player = initial_state.current_player()
         root = Node(initial_state)
 
         for _ in range(num_simulations):
             node = root
             search_path = [node]
 
-            # 1. Selection: Traverse until reaching a node that is not fully expanded or is terminal.
+            # 1. Selection: Traverse the tree until reaching a node that is not fully expanded or is terminal.
             while node.is_fully_expanded() and not node.is_terminal():
                 move, node = self._select_child(node)
                 search_path.append(node)
 
-            # 2. Expansion: If the node is non-terminal, expand one of its unvisited children.
+            # 2. Expansion: If the node is non-terminal, expand one of its untried children.
             if not node.is_terminal():
                 legal_moves = node.state.legal_actions()
                 untried_moves = [m for m in legal_moves if m not in node.children]
                 if untried_moves:
                     move = random.choice(untried_moves)
-                    next_state = node.state.clone()  # clone to avoid mutating the original state
+                    next_state = node.state.clone()
                     next_state.apply_action(move)
                     child_node = Node(next_state, parent=node, move=move)
                     node.children[move] = child_node
                     node = child_node
                     search_path.append(node)
 
-            # 3. Simulation (Rollout): Perform a random rollout from the new node until a terminal state.
-            reward = self._rollout(node.state)
+            # 3. Simulation (Rollout): Run a random simulation from the new node until terminal.
+            reward = self._rollout(node.state, root_player)
 
-            # 4. Backpropagation: Update the nodes along the path.
+            # 4. Backpropagation: Update each node along the path with the obtained reward.
             self._backpropagate(search_path, reward)
 
-        # Choose the best move based on the highest average value.
+        # Choose the move from the root with the highest average reward.
         best_move = None
         best_value = -float('inf')
         for move, child in root.children.items():
@@ -92,60 +94,49 @@ class MCTS:
 
         return best_move, best_child
 
-    def _rollout(self, state):
-        """
-        Perform a random rollout (simulation) from the given state until a terminal state is reached.
-        In many OpenSpiel games, rewards are only given at terminal states.
-        """
-        current_state = state.clone()  # clone to avoid side-effects
-        cumulative_reward = 0.0
+    def _rollout(self, state, root_player):
+        current_state = state.clone()
         discount = 1.0
+        cumulative_reward = 0.0
 
-        # If the game supports intermediate rewards, you could accumulate them here.
-        # For most OpenSpiel games, intermediate rewards are zero.
+        # In tic tac toe, intermediate rewards are zero; we only get a reward at terminal states.
         while not current_state.is_terminal():
             legal_moves = current_state.legal_actions()
             if not legal_moves:
                 break
             move = random.choice(legal_moves)
             current_state.apply_action(move)
-            # Assume no intermediate reward (or set reward=0) in most OpenSpiel games.
-            reward = 0.0
-            cumulative_reward += discount * reward
-            discount *= self.gamma
 
-        # At terminal state, get the reward from the state's returns.
-        # Here we assume a single-agent or a zero-sum game and use player 0's reward.
-        terminal_reward = current_state.returns()[0]
+        # Get the terminal reward from the perspective of the root player.
+        terminal_reward = current_state.returns()[root_player]
         cumulative_reward += discount * terminal_reward
 
         return cumulative_reward
 
     def _backpropagate(self, search_path, reward):
-        """
-        Propagate the reward back up the search path.
-        """
+        # Propagate the reward back up the tree.
         for node in reversed(search_path):
             node.visit_count += 1
             node.total_value += reward
             reward *= self.gamma
 
-def test_mcts():
-    # Load an OpenSpiel game. Here we use tic_tac_toe as an example.
+def play_full_game():
     game = pyspiel.load_game("tic_tac_toe")
-    initial_state = game.new_initial_state()
-
+    state = game.new_initial_state()
     mcts = MCTS(exploration_weight=1.0, gamma=1.0)
-    best_move, best_value = mcts.search(initial_state, num_simulations=1000)
 
-    print(f"Best move: {best_move}")
-    print(f"Best value: {best_value}")
+    print("Starting Tic Tac Toe Game")
+    while not state.is_terminal():
+        print("Current state:")
+        print(state)
+        # Each turn, the current player uses MCTS to choose a move.
+        best_move, best_value = mcts.search(state, num_simulations=1000)
+        print(f"Player {state.current_player()} selects move: {best_move} (value: {best_value})\n")
+        state.apply_action(best_move)
 
-    # Apply the best move to a clone of the initial state.
-    next_state = initial_state.clone()
-    next_state.apply_action(best_move)
-    print("Next state:")
-    print(next_state)
+    print("Final state:")
+    print(state)
+    print("Returns:", state.returns())
 
 if __name__ == "__main__":
-    test_mcts()
+    play_full_game()
