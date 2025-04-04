@@ -1,263 +1,313 @@
 import math
 import random
 import pyspiel
-import sys # For float('inf') if needed, though math.inf is preferred
+import time
 
-class Node:
+class MCTSNode:
+    """
+    Represents a node in the Monte Carlo Search Tree.
+    Stores statistics for the associated game state.
+    """
     def __init__(self, state, parent=None, move=None):
-        self.state = state         # an OpenSpiel state object
+        self.state = state  # The PySpiel state object corresponding to this node
         self.parent = parent
-        self.move = move           # The move that led to this state
-        self.player_at_node = state.current_player() if not state.is_terminal() else (1 - parent.player_at_node) # Player whose turn it IS at this node. Handle terminal case.
-        self.children = {}         # map move to Node
-        self.visit_count = 0
-        self.total_value = 0.0     # Accumulated value *from the perspective of player_at_node*
+        self.move = move    # The move that led from the parent to this node
 
-    def is_terminal(self):
-        return self.state.is_terminal()
+        # Player whose turn it is AT THIS NODE's state.
+        # Need to handle terminal states where current_player might be invalid.
+        self.player_to_move = -1 # Placeholder
+        if not self.state.is_terminal():
+            self.player_to_move = self.state.current_player()
+        elif parent:
+            # If terminal, the "player to move" concept is less meaningful,
+            # but for value assignment, consider it the opponent of the player who just moved.
+             self.player_to_move = 1 - parent.player_to_move
+        # else: root is terminal - should be handled before search starts.
+
+        self.children = {}  # Maps action -> MCTSNode
+        self.visit_count = 0
+        # Q-value: Sum of outcomes FOR THE PLAYER TO MOVE AT THIS NODE
+        # from simulations passing through this node.
+        self.total_value = 0.0
+
+        # Store legal actions and track untried ones for expansion
+        self.legal_actions = self.state.legal_actions() if not self.state.is_terminal() else []
+        self.untried_actions = list(self.legal_actions) # Keep a mutable list
 
     def is_fully_expanded(self):
-        if self.is_terminal():
-            return True
-        legal_moves = self.state.legal_actions()
-        return len(self.children) == len(legal_moves)
+        """Does this node have children for all its legal actions?"""
+        return not self.untried_actions and self.legal_actions # True if no untried actions and there were legal actions
 
-    def value(self):
-        """ Returns the average value of this node from the perspective
-            of the player whose turn it is at this node. """
-        return self.total_value / self.visit_count if self.visit_count > 0 else 0.0
+    def is_terminal(self):
+        """Is the state at this node terminal?"""
+        return self.state.is_terminal()
+
+    def get_value_estimate(self):
+        """Returns the average outcome for the player_to_move at this node."""
+        if self.visit_count == 0:
+            return 0.0  # Default value for unvisited nodes
+        return self.total_value / self.visit_count
 
 class MCTS:
-    # Use exploration_weight=sqrt(2) as it's common, and gamma=1.0 for TicTacToe
-    def __init__(self, exploration_weight=math.sqrt(2), gamma=1.0):
-        """
-        exploration_weight (C_p): controls the trade-off between exploration and exploitation.
-        gamma: discount factor (set to 1.0 for undiscounted terminal rewards).
-        """
-        self.exploration_weight = exploration_weight
-        self.gamma = gamma # Should be 1.0 for TicTacToe
+    """
+    Monte Carlo Tree Search algorithm implementation for two-player zero-sum games.
+    Uses the UCB1 formula (adapted for negamax) for selection.
+    """
+    def __init__(self, exploration_constant=math.sqrt(2)):
+        self.C = exploration_constant  # UCB exploration constant
 
     def search(self, initial_state, num_simulations):
-        root = Node(initial_state)
-        # Keep track of the root player just for the rollout perspective, although
-        # the negamax approach internalizes player perspectives.
-        root_player_for_rollout = initial_state.current_player()
+        """
+        Performs MCTS search from the initial_state for a given number of simulations.
+        Returns the best move found.
+        """
+        if initial_state.is_terminal():
+            raise ValueError("Cannot run search on a terminal state.")
 
-        if root.is_terminal():
-             raise ValueError("Cannot search from a terminal state.")
+        root = MCTSNode(initial_state)
 
-        for _ in range(num_simulations):
+        if not root.legal_actions:
+             raise ValueError("Cannot run search on a state with no legal actions (should be terminal).")
+
+        start_time = time.time()
+        for i in range(num_simulations):
+            # print(f"Sim {i+1}/{num_simulations}") # Debug: Track simulation progress
             node = root
-            search_path = [node]
+            path = [node] # Path for backpropagation
 
-            # 1. Selection: Traverse the tree using UCB1 variant for alternating players.
+            # 1. Selection Phase: Traverse down the tree using UCB1 until an expandable or terminal node is reached.
             while node.is_fully_expanded() and not node.is_terminal():
-                # Selection should only happen if fully expanded and not terminal
-                move, node = self._select_child(node)
-                search_path.append(node)
+                node = self._select_best_uct_child(node)
+                path.append(node)
+            # print(f"  Selection ended at node for player {node.player_to_move}, terminal={node.is_terminal()}, fully_expanded={node.is_fully_expanded()}")
 
-            # 2. Expansion: If the node is non-terminal and not fully expanded, expand one child.
-            # This check implicitly handles the case where Selection stops at a non-fully-expanded node.
-            if not node.is_fully_expanded() and not node.is_terminal():
+            # 2. Expansion Phase: If the node is not terminal, expand one untried action.
+            if not node.is_terminal(): # Implicitly, if it's not fully expanded
                 node = self._expand(node)
-                search_path.append(node) # Add the newly expanded node to the path
+                path.append(node)
+            # print(f"  Expansion resulted in node for player {node.player_to_move}, move={node.move}")
 
-            # 3. Simulation (Rollout): Run a random simulation from the new node (or terminal node).
-            #    The reward is calculated from the perspective of the root player of the *entire search*.
-            reward = self._rollout(node.state, root_player_for_rollout)
+            # 3. Simulation Phase (Rollout): Simulate a random playout from the new node (or selected terminal node).
+            reward = self._rollout(node.state)
+            # print(f"  Rollout reward: {reward}") # reward is array [P0_outcome, P1_outcome]
 
-            # 4. Backpropagation: Update nodes along the path, alternating reward sign.
-            self._backpropagate(search_path, reward)
+            # 4. Backpropagation Phase: Update visit counts and values along the path from the leaf to the root.
+            self._backpropagate(path, reward)
+            # print("  Backpropagation complete.")
 
-        # Choose the best move from the root based on negamax principle
-        # The root wants to maximize its own value. Its children's values are from
-        # the opponent's perspective. So root maximizes -child.value().
-        # This is equivalent to choosing the child with the minimum value.
-        # As an alternative robustness measure, often the most visited child is chosen.
-        # Let's choose based on value first:
-        best_move = None
-        best_value = -float('inf') # Root wants to maximize its value (-child_value)
+        end_time = time.time()
+        print(f"Search completed {num_simulations} sims in {end_time - start_time:.2f} seconds.")
 
-        if not root.children:
-             print("Warning: Root has no children after search. Choosing random move.")
-             # This might happen if num_simulations is very small or root is terminal (already checked)
-             return random.choice(initial_state.legal_actions()), 0.0
-
-        for move, child in root.children.items():
-             # Value from the root's perspective is -child.value()
-             # because child.value() is from the opponent's perspective.
-             current_value = -child.value()
-             # print(f"Move {move}: ChildValue={child.value():.3f}, Visits={child.visit_count}, RootPerspectiveValue={current_value:.3f}") # Debug print
-             if current_value > best_value:
-                 best_value = current_value
-                 best_move = move
-
-        # Alternative: Choose most visited child (often more stable)
-        # best_move = max(root.children, key=lambda m: root.children[m].visit_count)
-        # best_value = -root.children[best_move].value() # Value from root's perspective
-
-        if best_move is None:
-            print("Error: Could not determine best move. Choosing random.")
-            # Fallback if all children have same value (e.g., 0) and first check fails.
-            best_move = random.choice(list(root.children.keys()))
-            best_value = -root.children[best_move].value()
+        # Choose the best move from the root node
+        best_move = self._get_best_move(root)
+        return best_move
 
 
-        return best_move, best_value
-
-    def _select_child(self, node):
-        """ Selects a child node using UCB1 formula adapted for negamax. """
-        # Parent visit count MUST be positive if we are selecting a child from it
-        # after it has been visited at least once (which led to its expansion).
+    def _select_best_uct_child(self, node):
+        """
+        Selects the child with the highest UCT value (Upper Confidence Bound applied to Trees).
+        Uses the negamax perspective: the value of a child node is considered from the parent's perspective.
+        """
+        # Parent visit count must be > 0 if we are selecting a child
         log_parent_visits = math.log(node.visit_count)
 
         best_score = -float('inf')
-        best_move = None
         best_child = None
 
-        for move, child in node.children.items():
+        for child in node.children.values():
             if child.visit_count == 0:
-                # Prioritize unvisited children (infinite score) - should ideally be handled by expansion logic
-                # If we reach here for a node considered 'fully expanded', it's slightly unusual but handle it.
-                score = float('inf')
-            else:
-                # child.value() is from the child's perspective (opponent)
-                # Parent wants to maximize: -child.value() + exploration
-                exploitation = -child.value()
-                exploration = self.exploration_weight * math.sqrt(log_parent_visits / child.visit_count)
-                score = exploitation + exploration
+                # If any child is unvisited, UCT score is infinite.
+                # This case shouldn't ideally be reached if selection only happens on fully expanded nodes,
+                # but handle defensively. In practice, expansion usually picks before this state.
+                # However, if we *must* select from among visited children (e.g., if expansion logic changes),
+                # an unvisited child has max priority. Let's assume expansion handles this.
+                # A robust selection prioritizes unvisited, but here we assume visit_count > 0 for UCT calc.
+                # If this function IS called when some children have 0 visits, it's a logic issue elsewhere.
+                 # Let's assume children passed here have visit_count > 0 because the node is fully expanded
+                 # and has been visited before. Add check:
+                 if child.visit_count == 0:
+                      print(f"Warning: Selecting from fully expanded node, but child {child.move} has 0 visits.")
+                      # Assign infinite score to prioritize exploring it if it somehow got missed.
+                      score = float('inf')
+                 else:
+                    # child.get_value_estimate() is the average outcome for the player *at the child node*.
+                    # The parent node wants to maximize its *own* outcome. Since the child's player
+                    # is the opponent, the parent maximizes the negative of the child's value estimate.
+                    exploitation_term = -child.get_value_estimate()
+
+                    exploration_term = self.C * math.sqrt(log_parent_visits / child.visit_count)
+
+                    score = exploitation_term + exploration_term
 
             if score > best_score:
                 best_score = score
-                best_move = move
                 best_child = child
 
         if best_child is None:
-             # This should not happen in a node that is fully_expanded
-             print(f"Warning: _select_child failed to find best child for node with {node.visit_count} visits. State:\n{node.state}")
-             # Fallback to random choice among existing children
-             if node.children:
-                 best_move = random.choice(list(node.children.keys()))
-                 best_child = node.children[best_move]
-             else:
-                 # This indicates a deeper issue - selecting from a node with no children that thinks it's expanded
-                 raise RuntimeError("Select child called on fully expanded node with no children.")
+             # This should not happen if node.children is not empty.
+             print(f"Error: No best child found during selection for node with state:\n{node.state}")
+             # Fallback: return a random child
+             best_child = random.choice(list(node.children.values()))
 
+        return best_child
 
-        return best_move, best_child
 
     def _expand(self, node):
-        """ Expands one untried child node. """
-        legal_moves = node.state.legal_actions()
-        untried_moves = [m for m in legal_moves if m not in node.children]
-
-        if not untried_moves:
-            raise RuntimeError("Expand called on fully expanded node")
-
-        move = random.choice(untried_moves)
-        next_state = node.state.clone()
-        next_state.apply_action(move)
-        child_node = Node(next_state, parent=node, move=move)
-        node.children[move] = child_node
+        """
+        Expands the node by creating a child node for one of its untried actions.
+        Assumes the node is not terminal and not fully expanded.
+        """
+        action = node.untried_actions.pop() # Get and remove one untried action
+        child_state = node.state.clone()
+        child_state.apply_action(action)
+        child_node = MCTSNode(child_state, parent=node, move=action)
+        node.children[action] = child_node
         return child_node
 
 
-    def _rollout(self, state, root_player):
-        """ Simulates a random playout from the state.
-            Returns the terminal reward from the perspective of root_player.
+    def _rollout(self, state):
         """
-        current_state = state.clone()
-        while not current_state.is_terminal():
-            legal_moves = current_state.legal_actions()
-            # Handle cases like breakthrough where no moves might be possible (though not TicTacToe)
-            if not legal_moves:
-                return 0 # Or handle based on game rules (e.g., loss for current player)
-            move = random.choice(legal_moves)
-            current_state.apply_action(move)
+        Simulates a random playout from the given state until a terminal state is reached.
+        Returns the terminal rewards as a list [P0_reward, P1_reward].
+        """
+        rollout_state = state.clone()
+        while not rollout_state.is_terminal():
+            legal_actions = rollout_state.legal_actions()
+            if not legal_actions: # Should not happen in TicTacToe unless already terminal
+                 break
+            action = random.choice(legal_actions)
+            rollout_state.apply_action(action)
+        # Returns the utility for each player at the end of the episode.
+        # For TicTacToe: +1 for win, -1 for loss, 0 for draw.
+        return rollout_state.returns()
 
-        # Get the terminal reward from the perspective of the original root player.
-        terminal_reward = current_state.returns()[root_player]
-        return terminal_reward
 
-
-    def _backpropagate(self, search_path, reward):
-        """ Backpropagates the reward up the path, negating for alternating players. """
-        # The reward from rollout is from root_player's perspective.
-        # We need to adjust it based on the player at each node.
-        # Let current_reward be the value from the perspective of the *child* node's player.
-
-        current_reward = reward # Start with reward from root_player perspective
-
-        for node in reversed(search_path):
-            # The value stored in the node should be from the perspective of node.player_at_node.
-            # The `current_reward` coming up is from the perspective of the player
-            # at the *child* of this node (or from root_player for the leaf).
-            # Check if the node's player matches the perspective of the reward.
-            # If node.player_at_node == root_player, reward matches perspective.
-            # If node.player_at_node != root_player, reward is opponent's perspective.
-            # A simpler way for zero-sum games: negate at each step.
-            # The `reward` passed *into* the update for `node` should represent the outcome
-            # achieved by the player who moved *to* `node`.
-
+    def _backpropagate(self, path, rewards):
+        """
+        Updates the visit counts and total values of nodes along the search path.
+        The value update considers the perspective of the player whose turn it was at each node.
+        `rewards` is the list [P0_reward, P1_reward] from the rollout.
+        """
+        # Iterate backwards from the leaf node up to the root's parent
+        for node in reversed(path):
             node.visit_count += 1
-            # Add the value from the perspective of the player AT THIS NODE.
-            # Since the player alternates, the reward seen by this node is the
-            # negative of the reward seen by the child.
-            # Let's refine: `reward` is passed up. It represents the value from the perspective
-            # of the player who MOVED TO THE CHILD. This player is node.player_at_node.
-            # So, directly add the incoming reward? No, that's not quite right for negamax backprop.
 
-            # Correct Negamax Backprop: The value stored should be from the perspective of
-            # node.player_at_node. The reward from the simulation needs to be potentially flipped
-            # based on who node.player_at_node is relative to root_player.
-            # Then, as it propagates, it flips sign each time.
+            # Determine the reward relevant to the player whose turn it was at this node.
+            player = node.player_to_move
+            if player == 0:
+                reward_for_player = rewards[0] # Use Player 0's outcome
+            elif player == 1:
+                reward_for_player = rewards[1] # Use Player 1's outcome
+            else:
+                 # This might happen for the terminal node added during expansion,
+                 # or if root was terminal. Player should be defined.
+                 # If it's terminal, its value doesn't influence parent selection directly,
+                 # but its visit count matters. Let's assign reward based on parent.
+                 if node.parent:
+                      parent_player = node.parent.player_to_move
+                      # Reward should be from opponent's perspective relative to parent
+                      reward_for_player = rewards[1-parent_player]
+                 else: # Root is terminal - shouldn't happen due to initial check
+                      reward_for_player = 0 # Or handle error
+                      print("Warning: Backpropagating on a terminal root or node with undefined player.")
 
-            # Let's try the simple negation approach first:
-            node.total_value += reward 
-            reward *= -1 
-            reward *= self.gamma 
 
-def play_full_game():
-    game = pyspiel.load_game("tic_tac_toe")
+            # Add this reward to the node's total value.
+            # total_value accumulates rewards from the perspective of node.player_to_move.
+            node.total_value += reward_for_player
+
+
+    def _get_best_move(self, root_node):
+        """
+        Selects the best move from the root node after the search.
+        Typically chooses the move leading to the most visited child node for robustness.
+        """
+        if not root_node.children:
+            print("Warning: Root node has no children after search. Choosing random.")
+            return random.choice(root_node.legal_actions)
+
+        most_visited_child = None
+        max_visits = -1
+
+        # Debug print: Show stats for root's children
+        # print("\nRoot Children Stats:")
+        # sorted_children = sorted(root_node.children.items(), key=lambda item: item[1].visit_count, reverse=True)
+        # for move, child in sorted_children:
+        #      child_value = child.get_value_estimate()
+        #      # Value from root's perspective = -child_value
+        #      print(f"  Move: {move}, Visits: {child.visit_count}, Child_Val (P{child.player_to_move}'s persp): {child_value:.4f}, Root_Persp_Val: {-child_value:.4f}")
+
+
+        for move, child in root_node.children.items():
+            if child.visit_count > max_visits:
+                max_visits = child.visit_count
+                most_visited_child = child
+
+        if most_visited_child is None:
+             print("Error: Could not find most visited child. Choosing random.")
+             return random.choice(root_node.legal_actions)
+
+        return most_visited_child.move
+
+
+# --- Game Playing Logic ---
+
+def play_game(game_name="tic_tac_toe", num_simulations=10000, exploration_c=math.sqrt(2)):
+    """Plays a full game using MCTS for both players."""
+    game = pyspiel.load_game(game_name)
     state = game.new_initial_state()
-    # Use gamma=1.0 for Tic Tac Toe, sqrt(2) is a common exploration constant
-    mcts = MCTS(exploration_weight=math.sqrt(2), gamma=1.0)
+    mcts_agent = MCTS(exploration_constant=exploration_c)
 
-    print("Starting Tic Tac Toe Game (Negamax MCTS)")
+    print(f"Starting {game.get_type().long_name} Game")
+    print(f"MCTS settings: Sims={num_simulations}, C={exploration_c:.3f}")
+
     turn = 0
     while not state.is_terminal():
+        current_player = state.current_player()
         print("-" * 20)
-        print(f"Turn {turn}, Player {state.current_player()} to move:")
+        print(f"Turn {turn}, Player {current_player} to move:")
         print(state)
 
-        simulations = 100000
-        print(f"Running {simulations} MCTS simulations...")
-        best_move, best_value = mcts.search(state, num_simulations=simulations)
+        start_search_time = time.time()
+        print(f"Player {current_player} thinking...")
+        best_move = mcts_agent.search(state, num_simulations)
+        end_search_time = time.time()
+        print(f"Search time: {end_search_time - start_search_time:.2f} seconds.")
 
-        # The returned best_value is from the current player's perspective
-        print(f"Player {state.current_player()} selects move: {best_move} (predicted value: {best_value:.4f})\n")
 
-        # Check if move is legal before applying (debugging sanity check)
+        # Validate move (sanity check)
         if best_move not in state.legal_actions():
-            print(f"ERROR: MCTS chose illegal move {best_move}!")
-            print(f"Legal moves were: {state.legal_actions()}")
-            break # Stop the game
+             print(f"\n!!! ERROR: MCTS chose illegal move {best_move} !!!")
+             print(f"Legal moves: {state.legal_actions()}")
+             # Try to recover by choosing most visited among legal, or random
+             try:
+                 # This requires access to the root node internal to the search, which we don't have here easily.
+                 # Fallback to random legal move.
+                 print("Choosing random legal move as fallback.")
+                 best_move = random.choice(state.legal_actions())
+             except IndexError:
+                 print("No legal moves available? State should be terminal.")
+                 break # Exit loop
 
+        print(f"Player {current_player} selects move: {best_move}\n")
         state.apply_action(best_move)
         turn += 1
 
+    # Game finished
     print("=" * 20)
     print("Game Over!")
     print("Final state:")
     print(state)
     returns = state.returns()
-    print("Returns:", returns)
-    if returns[0] == 1:
+    print(f"Returns: Player 0: {returns[0]}, Player 1: {returns[1]}")
+    if returns[0] > returns[1]:
         print("Player 0 Wins!")
-    elif returns[1] == 1:
+    elif returns[1] > returns[0]:
         print("Player 1 Wins!")
     else:
         print("It's a Draw!")
 
 if __name__ == "__main__":
-    play_full_game()
+    # Use a high number of simulations for TicTacToe - it should play perfectly.
+    # 10k should be sufficient, 20k+ very safe. Let's use 10k default.
+    play_game(num_simulations=10000)
