@@ -130,7 +130,7 @@ class MCTS:
             reward *= self.gamma
 
 def play_full_game():
-    game = pyspiel.load_game("connect_four")
+    game = pyspiel.load_game("tic_tac_toe")
     state = game.new_initial_state()
     mcts = MCTS(exploration_weight=0.5, gamma=.98)
 
