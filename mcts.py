@@ -77,26 +77,35 @@ class MCTS:
         return best_move, best_value
 
     def _select_child(self, node):
-        total_visits = sum(child.visit_count for child in node.children.values())
+        # Ensure parent visit count is at least 1 for log calculation
+        # (it should be > 0 if we are selecting a child)
+        log_parent_visits = math.log(max(1, node.visit_count)) # Use parent's visits
+
         best_score = -float('inf')
         best_move = None
         best_child = None
 
         for move, child in node.children.items():
-            exploitation = child.value()
-            exploration = self.exploration_weight * math.sqrt(math.log(total_visits) / child.visit_count)
-            score = exploitation + exploration
+            if child.visit_count == 0:
+                 score = child.value() + self.exploration_weight * float('inf') 
+            else:
+                exploitation = child.value()
+                exploration = self.exploration_weight * math.sqrt(log_parent_visits / child.visit_count)
+                score = exploitation + exploration
 
             if score > best_score:
                 best_score = score
                 best_move = move
                 best_child = child
 
+        if best_child is None and node.children:
+             best_move = random.choice(list(node.children.keys()))
+             best_child = node.children[best_move]
+
         return best_move, best_child
 
     def _rollout(self, state, root_player):
         current_state = state.clone()
-        discount = 0.98
         cumulative_reward = 0.0
 
         # In tic tac toe, intermediate rewards are zero; we only get a reward at terminal states.
@@ -109,7 +118,7 @@ class MCTS:
 
         # Get the terminal reward from the perspective of the root player.
         terminal_reward = current_state.returns()[root_player]
-        cumulative_reward += discount * terminal_reward
+        cumulative_reward += terminal_reward
 
         return cumulative_reward
 
