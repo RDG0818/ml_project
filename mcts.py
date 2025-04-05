@@ -55,26 +55,48 @@ def expand(node):
 def default_policy(state, root_player):
     """
     Simulate a playout until a terminal state is reached.
-    This version checks for immediate winning moves.
+    This version first checks for immediate wins for the current player.
+    If no immediate win is found, it looks for moves that block an
+    obvious win from the opponent by avoiding moves that allow an
+    immediate opponent win.
     Returns the outcome from the perspective of root_player.
     """
     rollout_state = state.clone()
     while not rollout_state.is_terminal():
         legal_moves = rollout_state.legal_actions()
         move_to_play = None
-        # Check if any move results in a terminal win state for the current player.
+        current = rollout_state.current_player()
+        opponent = 1 - current
+
+        # 1. Check for an immediate win for the current player.
         for move in legal_moves:
             test_state = rollout_state.child(move)
             if test_state.is_terminal():
-                # Check if this terminal state is a win for the current player.
-                # Note: This assumes that a win gives a positive reward.
                 returns = test_state.returns()
-                current = rollout_state.current_player()
                 if returns[current] > 0:
                     move_to_play = move
                     break
+
+        # 2. If no immediate win, try to choose a move that blocks the opponent's immediate win.
         if move_to_play is None:
-            move_to_play = random.choice(legal_moves)
+            safe_moves = []
+            for move in legal_moves:
+                test_state = rollout_state.child(move)
+                opp_immediate_win = False
+                # Now it will be the opponent's turn.
+                for opp_move in test_state.legal_actions():
+                    opp_test_state = test_state.child(opp_move)
+                    if opp_test_state.is_terminal():
+                        returns = opp_test_state.returns()
+                        if returns[opponent] > 0:
+                            opp_immediate_win = True
+                            break
+                if not opp_immediate_win:
+                    safe_moves.append(move)
+            if safe_moves:
+                move_to_play = random.choice(safe_moves)
+            else:
+                move_to_play = random.choice(legal_moves)
         rollout_state.apply_action(move_to_play)
     returns = rollout_state.returns()
     return returns[root_player]
