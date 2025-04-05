@@ -236,11 +236,6 @@ def play_game(iterations_per_move=50000):
              print("MCTS returned no move. Game ending.")
              break
 
-        # Optional: Print MCTS stats for the chosen move and others
-        if move in root.children: # Check if root from last mcts call is accessible (need to return it or make it global/class member)
-            # This requires modifying mcts to return root or stats, or rethinking structure
-            # For now, just print the move
-             pass # Placeholder for printing stats
         print(f"MCTS selected move: {move} (Action ID)")
 
         # Optional: Map action ID to a more readable format if desired
