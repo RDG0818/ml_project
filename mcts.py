@@ -254,4 +254,4 @@ def play_game(iterations_per_move=50000):
 
 if __name__ == "__main__":
     # Reduce iterations for faster testing, increase again for stronger play
-    play_game(iterations_per_move=10000) # Start with fewer, e.g., 10k
+    play_game(iterations_per_move=100000) # Start with fewer, e.g., 10k
