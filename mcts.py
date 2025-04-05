@@ -230,18 +230,22 @@ def play_game(iterations_per_move=50000):
         print(f"\nTurn {turn+1}, Player {state.current_player()}")
         print("Current state:")
         print(state)
-        move = mcts(state, iterations_per_move)
+        if turn % 2 == 0:
+            move = mcts(state, iterations_per_move)
 
-        if move is None:
-             print("MCTS returned no move. Game ending.")
-             break
+            if move is None:
+                print("MCTS returned no move. Game ending.")
+                break
 
-        print(f"MCTS selected move: {move} (Action ID)")
+            print(f"MCTS selected move: {move} (Action ID)")
 
-        # Optional: Map action ID to a more readable format if desired
-        # print(f"MCTS selected move: {state.action_to_string(state.current_player(), move)}")
+            # Optional: Map action ID to a more readable format if desired
+            # print(f"MCTS selected move: {state.action_to_string(state.current_player(), move)}")
 
-        state.apply_action(move)
+            state.apply_action(move)
+        else:
+            move = random.choice(state.legal_actions())
+            state.apply_action(move)
         turn += 1
 
     print("\nFinal state:")
