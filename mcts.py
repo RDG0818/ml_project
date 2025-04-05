@@ -55,10 +55,9 @@ def expand(node):
 def default_policy(state, root_player):
     """
     Simulate a playout until a terminal state is reached.
-    This version first checks for immediate wins for the current player.
-    If no immediate win is found, it looks for moves that block an
-    obvious win from the opponent by avoiding moves that allow an
-    immediate opponent win.
+    This version first checks for an immediate win for the current player.
+    If no immediate win is found, it then selects only among moves
+    that do not immediately allow an opponent win.
     Returns the outcome from the perspective of root_player.
     """
     rollout_state = state.clone()
@@ -77,22 +76,29 @@ def default_policy(state, root_player):
                     move_to_play = move
                     break
 
-        # 2. If no immediate win, try to choose a move that blocks the opponent's immediate win.
+        # 2. If no immediate win, choose a move that does not allow an immediate opponent win.
         if move_to_play is None:
             safe_moves = []
             for move in legal_moves:
                 test_state = rollout_state.child(move)
-                opp_immediate_win = False
-                # Now it will be the opponent's turn.
-                for opp_move in test_state.legal_actions():
-                    opp_test_state = test_state.child(opp_move)
-                    if opp_test_state.is_terminal():
-                        returns = opp_test_state.returns()
-                        if returns[opponent] > 0:
-                            opp_immediate_win = True
-                            break
-                if not opp_immediate_win:
-                    safe_moves.append(move)
+                # First, if this move itself is terminal, check if it results in a loss.
+                if test_state.is_terminal():
+                    returns = test_state.returns()
+                    if returns[opponent] > 0:
+                        continue  # This move immediately loses; not safe.
+                else:
+                    # Otherwise, simulate each opponent move.
+                    opp_immediate_win = False
+                    for opp_move in test_state.legal_actions():
+                        opp_test_state = test_state.child(opp_move)
+                        if opp_test_state.is_terminal():
+                            returns = opp_test_state.returns()
+                            if returns[opponent] > 0:
+                                opp_immediate_win = True
+                                break
+                    if opp_immediate_win:
+                        continue  # This move allows the opponent to win immediately.
+                safe_moves.append(move)
             if safe_moves:
                 move_to_play = random.choice(safe_moves)
             else:
