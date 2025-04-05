@@ -62,49 +62,12 @@ def default_policy(state, root_player):
     """
     rollout_state = state.clone()
     while not rollout_state.is_terminal():
-        legal_moves = rollout_state.legal_actions()
-        move_to_play = None
-        current = rollout_state.current_player()
-        opponent = 1 - current
+        # Select a random legal action
+        action = random.choice(rollout_state.legal_actions())
+        rollout_state.apply_action(action)
 
-        # 1. Check for an immediate win for the current player.
-        for move in legal_moves:
-            test_state = rollout_state.child(move)
-            if test_state.is_terminal():
-                returns = test_state.returns()
-                if returns[current] > 0:
-                    move_to_play = move
-                    break
-
-        # 2. If no immediate win, choose a move that does not allow an immediate opponent win.
-        if move_to_play is None:
-            safe_moves = []
-            for move in legal_moves:
-                test_state = rollout_state.child(move)
-                # First, if this move itself is terminal, check if it results in a loss.
-                if test_state.is_terminal():
-                    returns = test_state.returns()
-                    if returns[opponent] > 0:
-                        continue  # This move immediately loses; not safe.
-                else:
-                    # Otherwise, simulate each opponent move.
-                    opp_immediate_win = False
-                    for opp_move in test_state.legal_actions():
-                        opp_test_state = test_state.child(opp_move)
-                        if opp_test_state.is_terminal():
-                            returns = opp_test_state.returns()
-                            if returns[opponent] > 0:
-                                opp_immediate_win = True
-                                break
-                    if opp_immediate_win:
-                        continue  # This move allows the opponent to win immediately.
-                safe_moves.append(move)
-            if safe_moves:
-                move_to_play = random.choice(safe_moves)
-            else:
-                move_to_play = random.choice(legal_moves)
-        rollout_state.apply_action(move_to_play)
     returns = rollout_state.returns()
+
     return returns[root_player]
 
 def backup(node, reward):
