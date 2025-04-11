@@ -69,7 +69,7 @@ class MCTSBot:
             else:
                 exploitation = child.total_reward / child.visit_count
                 exploration = math.sqrt(math.log(node.visit_count) / child.visit_count)
-                score = exploitation + 0.1 * exploration  # UCB1 constant
+                score = exploitation + 0.3 * exploration  # UCB1 constant
 
             if score > best_score:
                 best_score, best_child = score, child
@@ -86,12 +86,12 @@ class MCTSBot:
 
 def play_match():
     """Pits two MCTS bots against each other"""
-    game = pyspiel.load_game("tic_tac_toe")
+    game = pyspiel.load_game("connect_four")
     state = game.new_initial_state()
 
     bots = {
-        0: MCTSBot(game, 0, 10000),
-        1: MCTSBot(game, 1, 10000)
+        0: MCTSBot(game, 0, 100000),
+        1: MCTSBot(game, 1, 100000)
     }
 
     while not state.is_terminal():
