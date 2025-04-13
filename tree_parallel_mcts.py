@@ -23,7 +23,7 @@ class MCTSActor:
             self.total_reward = 0.0
             self.children = None
 
-    def search(self, root_state, num_iterations):
+    def search(self, root_state, num_iterations=100000):
         """Perform a chunk of MCTS iterations"""
         root = self.Node()
         state = root_state.clone()
@@ -87,7 +87,7 @@ class MCTSActor:
         return state.rewards()[self.player_id]
 
 class ParallelMCTSBot:
-    def __init__(self, game_name, player_id, num_iterations=10000, num_actors=4):
+    def __init__(self, game_name, player_id, num_iterations=100000, num_actors=4):
         self.game_name = game_name
         self.player_id = player_id
         self.num_iterations = num_iterations
@@ -150,26 +150,27 @@ def benchmark(bot_class, game_name, num_runs=5):
 
 if __name__ == "__main__":
     game_name = "connect_four"
-    
-    # Benchmark different configurations
-    print("Benchmarking MCTS implementations:")
-    benchmark(ParallelMCTSBot, game_name)
+    num_games = 20
     
     # Example match between optimized bots
     print("\nRunning sample match:")
-    game = pyspiel.load_game(game_name)
-    state = game.new_initial_state()
     
     bots = {
         0: ParallelMCTSBot(game_name, 0, num_actors=4),
         1: ParallelMCTSBot(game_name, 1, num_actors=4)
     }
     
-    while not state.is_terminal():
-        current_player = state.current_player()
-        action = bots[current_player].get_action(state)
-        state.apply_action(action)
-        print(f"Player {current_player} played column {action + 1}")
-    
-    print("\nFinal board:")
-    print(state)
+    start_time = time.time()
+    for i in range(20):
+        print(f"Playing Game {i+1}")
+        game = pyspiel.load_game(game_name)
+        state = game.new_initial_state()
+
+        while not state.is_terminal():
+            current_player = state.current_player()
+            action = bots[current_player].get_action(state)
+            state.apply_action(action)
+        
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f"\nTotal Time for {num_games} games: {total_time:.2f} seconds")

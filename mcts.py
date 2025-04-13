@@ -1,6 +1,7 @@
 import math
 import random
 import pyspiel
+import time
 
 class MCTSNode:
     def __init__(self, state, parent=None, action=None):
@@ -21,7 +22,7 @@ class MCTSNode:
         self.is_expanded = True
 
 class MCTSBot:
-    def __init__(self, game, player_id, num_iterations=1000):
+    def __init__(self, game, player_id, num_iterations=100000):
         self.game = game
         self.player_id = player_id
         self.num_iterations = num_iterations
@@ -84,27 +85,28 @@ class MCTSBot:
             current_state.apply_action(action)
         return current_state.rewards()[self.player_id]
 
-def play_match():
-    """Pits two MCTS bots against each other"""
-    game = pyspiel.load_game("connect_four")
-    state = game.new_initial_state()
-
-    bots = {
-        0: MCTSBot(game, 0, 100000),
-        1: MCTSBot(game, 1, 100000)
-    }
-
-    while not state.is_terminal():
-        print(f"\nCurrent player: {state.current_player()}")
-        print(state)
-
-        current_player = state.current_player()
-        action = bots[current_player].get_action(state)
-        state.apply_action(action)
-
-    print("\nFinal state:")
-    print(state)
-    print(f"Rewards: {state.rewards()}")
-
 if __name__ == "__main__":
-    play_match()
+    game_name = "connect_four"
+    num_games = 20
+    
+    print("\nRunning sample match:")
+    
+    bots = {
+        0: MCTSBot(game_name, 0),
+        1: MCTSBot(game_name, 1)
+    }
+    
+    start_time = time.time()
+    for i in range(20):
+        print(f"Playing Game {i+1}")
+        game = pyspiel.load_game(game_name)
+        state = game.new_initial_state()
+
+        while not state.is_terminal():
+            current_player = state.current_player()
+            action = bots[current_player].get_action(state)
+            state.apply_action(action)
+        
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f"\nTotal Time for {num_games} games: {total_time:.2f} seconds")
