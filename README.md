@@ -13,10 +13,10 @@ This project explores the performance of different parallelization techniques ap
 ## Results
 
 ### Connect Four
-![Connect Four Results](results/connect_four_results.png)
+![Connect Four Results](connect_four_results.png)
 
 ### Checkers
-![Checkers Results](results/checkers_results.png)
+![Checkers Results](checkers_results.png)
 
 ## Dependencies
 
