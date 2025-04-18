@@ -1,0 +1,105 @@
+The following games were ran with the following parameters:
+Exploration Constant: 0.3
+Games: 20
+Game Type: Connect Four
+Number of Iterations: 100000
+
+
+MCTS:
+Game 1 completed in 14.40 seconds
+Game 2 completed in 9.36 seconds
+Game 3 completed in 11.11 seconds
+Game 4 completed in 16.24 seconds
+Game 5 completed in 11.32 seconds
+Game 6 completed in 16.11 seconds
+Game 7 completed in 19.36 seconds
+Game 8 completed in 10.37 seconds
+Game 9 completed in 7.41 seconds
+Game 10 completed in 14.28 seconds
+Game 11 completed in 9.88 seconds
+Game 12 completed in 7.73 seconds
+Game 13 completed in 10.31 seconds
+Game 14 completed in 18.75 seconds
+Game 15 completed in 10.31 seconds
+Game 16 completed in 10.76 seconds
+Game 17 completed in 18.34 seconds
+Game 18 completed in 15.03 seconds
+Game 19 completed in 6.83 seconds
+Game 20 completed in 11.20 seconds
+
+Total Time for 20 games: 249.08 seconds
+Average Time for 20 games: 12.45 seconds
+
+Multiprocessing MCTS:
+Game 10 finished in 11.23 seconds
+Game 14 finished in 15.10 seconds
+Game 17 finished in 22.86 seconds
+Game 11 finished in 27.92 seconds
+Game 15 finished in 30.80 seconds
+Game 0 finished in 31.19 seconds
+Game 13 finished in 35.57 seconds
+Game 9 finished in 39.35 seconds
+Game 2 finished in 39.46 seconds
+Game 5 finished in 40.58 seconds
+Game 7 finished in 40.98 seconds
+Game 16 finished in 41.96 seconds
+Game 4 finished in 46.55 seconds
+Game 19 finished in 52.15 seconds
+Game 8 finished in 53.00 seconds
+Game 1 finished in 53.56 seconds
+Game 6 finished in 54.25 seconds
+Game 3 finished in 54.35 seconds
+Game 12 finished in 59.54 seconds
+Game 18 finished in 60.56 seconds
+
+Total Time for 20 games: 60.59 seconds
+
+Tree Parallel MCTS:
+Game 1 finished in 6.36 seconds
+Game 2 finished in 5.71 seconds
+Game 3 finished in 5.88 seconds
+Game 4 finished in 8.81 seconds
+Game 5 finished in 7.15 seconds
+Game 6 finished in 10.67 seconds
+Game 7 finished in 14.83 seconds
+Game 8 finished in 8.12 seconds
+Game 9 finished in 10.83 seconds
+Game 10 finished in 8.56 seconds
+Game 11 finished in 2.75 seconds
+Game 12 finished in 3.53 seconds
+Game 13 finished in 8.25 seconds
+Game 14 finished in 6.91 seconds
+Game 15 finished in 4.49 seconds
+Game 16 finished in 5.05 seconds
+Game 17 finished in 4.48 seconds
+Game 18 finished in 3.55 seconds
+Game 19 finished in 6.09 seconds
+Game 20 finished in 7.08 seconds
+
+Total Time for 20 games: 139.08 seconds
+Average Time for 20 games: 6.95 seconds
+
+Speculative MCTS:
+Game 1 completed in 6.73 seconds
+Game 2 completed in 7.10 seconds
+Game 3 completed in 6.84 seconds
+Game 4 completed in 6.54 seconds
+Game 5 completed in 6.61 seconds
+Game 6 completed in 6.55 seconds
+Game 7 completed in 11.04 seconds
+Game 8 completed in 7.54 seconds
+Game 9 completed in 6.66 seconds
+Game 10 completed in 6.53 seconds
+Game 11 completed in 19.97 seconds
+Game 12 completed in 8.11 seconds
+Game 13 completed in 6.37 seconds
+Game 14 completed in 6.53 seconds
+Game 15 completed in 6.67 seconds
+Game 16 completed in 15.66 seconds
+Game 17 completed in 14.52 seconds
+Game 18 completed in 6.59 seconds
+Game 19 completed in 6.61 seconds
+Game 20 completed in 7.56 seconds
+
+Total Time for 20 games: 170.74 seconds
+Average Time for 20 games: 8.54 seconds

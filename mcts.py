@@ -22,7 +22,7 @@ class MCTSNode:
         self.is_expanded = True
 
 class MCTSBot:
-    def __init__(self, game, player_id, num_iterations=100000):
+    def __init__(self, game, player_id, num_iterations=10000):
         self.game = game
         self.player_id = player_id
         self.num_iterations = num_iterations
@@ -86,10 +86,8 @@ class MCTSBot:
         return current_state.rewards()[self.player_id]
 
 if __name__ == "__main__":
-    game_name = "connect_four"
+    game_name = "checkers"
     num_games = 20
-    
-    print("\nRunning sample match:")
     
     bots = {
         0: MCTSBot(game_name, 0),
@@ -98,7 +96,7 @@ if __name__ == "__main__":
     
     start_time = time.time()
     for i in range(20):
-        print(f"Playing Game {i+1}")
+        start_game_time = time.time()
         game = pyspiel.load_game(game_name)
         state = game.new_initial_state()
 
@@ -106,7 +104,11 @@ if __name__ == "__main__":
             current_player = state.current_player()
             action = bots[current_player].get_action(state)
             state.apply_action(action)
+        end_game_time = time.time()
+        print(f"Game {i+1} completed in {(end_game_time-start_game_time):.2f} seconds")
+
         
     end_time = time.time()
     total_time = end_time - start_time
     print(f"\nTotal Time for {num_games} games: {total_time:.2f} seconds")
+    print(f"Average Time for {num_games} games: {(total_time/num_games):.2f} seconds")

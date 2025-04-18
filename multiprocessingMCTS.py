@@ -123,21 +123,19 @@ class MCTS:
             reward *= self.gamma
 
 def play_full_game(game_id):
-    game = pyspiel.load_game("connect_four")
+    game = pyspiel.load_game("checkers")
     state = game.new_initial_state()
+    start_time = time.time()
     mcts = MCTS(exploration_weight=0.5, gamma=.98)
 
-    print(f"Game {game_id}: Starting Tic Tac Toe Game")
     while not state.is_terminal():
-        # took out printing current state because its a little messy when multiple
-        # processes are running at the same time
-        best_move, best_value = mcts.search(state, num_simulations=100000)
-        print(f"Game {game_id}: Player {state.current_player()} selects move: {best_move} (value: {best_value})")
+        best_move, best_value = mcts.search(state, num_simulations=10000)
         state.apply_action(best_move)
 
-    print(f"\nGame {game_id}: Final state:")
-    print(state)
-    print(f"\nGame {game_id}: Returns:", state.returns())
+    end_time = time.time()
+
+    print(f"Game {game_id} finished in {(end_time-start_time):.2f} seconds")
+    
 
 def run_multiple_games(num_games=20):
     # time how long to complete all games

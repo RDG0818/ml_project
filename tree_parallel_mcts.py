@@ -10,7 +10,7 @@ ray.init()
 
 @ray.remote
 class MCTSActor:
-    def __init__(self, game_name, player_id, exploration=0.1):
+    def __init__(self, game_name, player_id, exploration=0.3):
         self.game = pyspiel.load_game(game_name)
         self.player_id = player_id
         self.exploration = exploration
@@ -23,7 +23,7 @@ class MCTSActor:
             self.total_reward = 0.0
             self.children = None
 
-    def search(self, root_state, num_iterations=100000):
+    def search(self, root_state, num_iterations=10000):
         """Perform a chunk of MCTS iterations"""
         root = self.Node()
         state = root_state.clone()
@@ -87,7 +87,7 @@ class MCTSActor:
         return state.rewards()[self.player_id]
 
 class ParallelMCTSBot:
-    def __init__(self, game_name, player_id, num_iterations=100000, num_actors=4):
+    def __init__(self, game_name, player_id, num_iterations=10000, num_actors=4):
         self.game_name = game_name
         self.player_id = player_id
         self.num_iterations = num_iterations
@@ -141,7 +141,7 @@ def benchmark(bot_class, game_name, num_runs=5):
     for label, params in configs:
         times = []
         for _ in range(num_runs):
-            bot = bot_class(game_name, 0, num_iterations=100000, **params)
+            bot = bot_class(game_name, 0, num_iterations=10000, **params)
             start = time.time()
             bot.get_action(state)
             times.append(time.time() - start)
@@ -149,27 +149,29 @@ def benchmark(bot_class, game_name, num_runs=5):
         print(f"{label}: {np.mean(times):.2f}s ± {np.std(times):.2f}")
 
 if __name__ == "__main__":
-    game_name = "connect_four"
+    game_name = "checkers"
     num_games = 20
     
-    # Example match between optimized bots
-    print("\nRunning sample match:")
     
     bots = {
-        0: ParallelMCTSBot(game_name, 0, num_actors=4),
-        1: ParallelMCTSBot(game_name, 1, num_actors=4)
+        0: ParallelMCTSBot(game_name, 0, num_actors=30),
+        1: ParallelMCTSBot(game_name, 1, num_actors=30)
     }
     
     start_time = time.time()
     for i in range(20):
-        print(f"Playing Game {i+1}")
         game = pyspiel.load_game(game_name)
         state = game.new_initial_state()
+        start_game_time = time.time()
 
         while not state.is_terminal():
             current_player = state.current_player()
             action = bots[current_player].get_action(state)
             state.apply_action(action)
+        
+        end_game_time = time.time()
+
+        print(f"Game {i+1} finished in {(end_game_time - start_game_time):.2f} seconds")
         
     end_time = time.time()
     total_time = end_time - start_time
