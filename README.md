@@ -24,6 +24,7 @@ This project explores the performance of different parallelization techniques ap
 - [OpenSpiel](https://github.com/deepmind/open_spiel)
 - `matplotlib`
 - `numpy`
+- `ray`
 
 Install the dependencies:
 
