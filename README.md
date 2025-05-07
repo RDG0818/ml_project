@@ -18,6 +18,9 @@ This project explores the performance of different parallelization techniques ap
 ### Checkers
 ![Checkers Results](checkers_results.png)
 
+### Go
+![Go_Results](go_results.png)
+
 ## Dependencies
 
 - Python 3.8+
