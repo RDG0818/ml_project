@@ -123,13 +123,13 @@ class MCTS:
             reward *= self.gamma
 
 def play_full_game(game_id):
-    game = pyspiel.load_game("checkers")
+    game = pyspiel.load_game("go")
     state = game.new_initial_state()
     start_time = time.time()
     mcts = MCTS(exploration_weight=0.5, gamma=.98)
 
     while not state.is_terminal():
-        best_move, best_value = mcts.search(state, num_simulations=10000)
+        best_move, best_value = mcts.search(state, num_simulations=500)
         state.apply_action(best_move)
 
     end_time = time.time()

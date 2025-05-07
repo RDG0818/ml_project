@@ -9,10 +9,10 @@ from collections import deque
 # ========================
 #      CONFIG SECTION     
 # ========================
-GAME_NAME = "checkers"
+GAME_NAME = "connect_four"
 NUM_GAMES = 20               # Number of games to play for comparison
 NUM_WORKERS = 30            # Number of parallel workers for speculation
-TOTAL_ITERATIONS = 10000       # Total MCTS simulations per move
+TOTAL_ITERATIONS = 100000       # Total MCTS simulations per move
 SPLIT_RATIO = 0.90            # Ratio of simulations for speculation vs verification
 CACHE_ENABLED = True         # Enable/disable neural network cache simulation
 # ========================
@@ -232,6 +232,11 @@ if __name__ == "__main__":
     spec_start = time.time()
     spec_time = SpeculativeMCTS(GAME_NAME).play_games(NUM_GAMES)
     spec_total = time.time() - spec_start
+    base_total = run_baseline(NUM_GAMES)
 
+    print("Speculative:")
     print(f"Total Time for {NUM_GAMES} games: {spec_total:.2f} seconds")
     print(f"Average Time for {NUM_GAMES} games: {(spec_total/NUM_GAMES):.2f} seconds")
+    print("\nNo Speculative:")
+    print(f"Total Time for {NUM_GAMES} games: {base_total:.2f} seconds")
+    print(f"Average Time for {NUM_GAMES} games: {(base_total/NUM_GAMES):.2f} seconds")

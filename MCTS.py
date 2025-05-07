@@ -22,7 +22,7 @@ class MCTSNode:
         self.is_expanded = True
 
 class MCTSBot:
-    def __init__(self, game, player_id, num_iterations=10000):
+    def __init__(self, game, player_id, num_iterations=500):
         self.game = game
         self.player_id = player_id
         self.num_iterations = num_iterations
@@ -86,7 +86,7 @@ class MCTSBot:
         return current_state.rewards()[self.player_id]
 
 if __name__ == "__main__":
-    game_name = "checkers"
+    game_name = "go"
     num_games = 20
     
     bots = {

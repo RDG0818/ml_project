@@ -6,7 +6,7 @@ import re
 algorithms = []
 current_algorithm = None
 
-with open('checkers_data.txt', 'r') as file:
+with open('go_data.txt', 'r') as file:
     for line in file:
         line = line.strip()
         if not line:
@@ -49,7 +49,7 @@ fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(12, 10), gridspec_kw={'height_r
 # Bar chart for total times
 bars = ax1.bar(algorithm_names, total_times, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
 ax1.set_ylabel('Total Time (seconds)', fontsize=12)
-ax1.set_title('Total Time for 20 Games of Checkers', fontsize=14, pad=20)
+ax1.set_title('Total Time for 20 Games of Go', fontsize=14, pad=20)
 ax1.tick_params(axis='x', labelsize=10)
 ax1.grid(axis='y', linestyle='--', alpha=0.7)
 
